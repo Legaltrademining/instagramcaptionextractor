@@ -1,19 +1,22 @@
 {
   "name": "insta-caption-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Instagram Caption & Image Extractor",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"No test specified\" && exit 0"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["instagram", "extractor", "puppeteer", "express", "api"],
+  "author": "Daniel",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.11.0",
-    "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "npm": "^11.5.1"
+    "puppeteer": "^22.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
