@@ -1,6 +1,5 @@
 const express = require("express");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const puppeteer = require("puppeteer");
 const cors = require("cors");
 
 const app = express();
@@ -9,39 +8,79 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+const extractInstagramData = async (url) => {
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: "new", // Use "true" for older Puppeteer versions
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(30000);
+    await page.goto(url, { waitUntil: "networkidle2" });
+
+    const result = await page.evaluate(() => {
+      let caption = null;
+      let image = null;
+
+      const ldJson = document.querySelector('script[type="application/ld+json"]');
+      if (ldJson) {
+        try {
+          const metadata = JSON.parse(ldJson.innerText);
+          caption = metadata.caption || metadata.articleBody || null;
+          image = metadata.image || null;
+        } catch (e) {}
+      }
+
+      if (!caption) {
+        const captionElem = document.querySelector("meta[property='og:description']");
+        if (captionElem) {
+          caption = captionElem.getAttribute("content");
+        }
+      }
+
+      if (!image) {
+        const imgElem = document.querySelector("meta[property='og:image']");
+        if (imgElem) {
+          image = imgElem.getAttribute("content");
+        }
+      }
+
+      return { caption, image };
+    });
+
+    return result;
+  } catch (err) {
+    console.error("❌ Puppeteer error:", err.message);
+    throw new Error("Could not extract Instagram data.");
+  } finally {
+    if (browser) await browser.close();
+  }
+};
+
 app.get("/api/extract", async (req, res) => {
   const postUrl = req.query.url;
+  const validPath = /instagram\.com\/(p|reel|tv)\/[a-zA-Z0-9_-]+/i;
 
-  if (!postUrl || !postUrl.includes("instagram.com/p/")) {
-    return res.status(400).json({ error: "Invalid Instagram post URL." });
+  if (!postUrl || !validPath.test(postUrl)) {
+    return res.status(400).json({
+      error: "Invalid Instagram URL. Must be a post, reel, or IGTV link.",
+    });
   }
 
   try {
-    const { data: html } = await axios.get(postUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119.0 Safari/537.36",
-      },
-    });
-
-    const $ = cheerio.load(html);
-    const jsonText = $('script[type="application/ld+json"]').html();
-
-    if (!jsonText) {
-      return res.status(500).json({ error: "Could not find Instagram metadata." });
+    const result = await extractInstagramData(postUrl);
+    if (!result.caption && !result.image) {
+      return res.status(500).json({ error: "Could not extract any content." });
     }
 
-    const metadata = JSON.parse(jsonText);
-
-    const caption = metadata.caption || metadata.articleBody || null;
-    const image = metadata.image || null;
-
-    res.json({ caption, image });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to extract data. Post may be private or removed." });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
