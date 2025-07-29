@@ -1,30 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Instagram Caption Extractor</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    input {
+      width: 400px;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #result {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      width: 80%;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #previewImage {
+      max-width: 100%;
+      margin-top: 15px;
+      border-radius: 8px;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📸 Instagram Caption Extractor</h1>
-    <p class="subtitle">Paste the URL of any public Instagram post to extract the caption.</p>
-    
-    <div class="input-box">
-      <input type="text" id="instaUrl" placeholder="https://www.instagram.com/p/xyz123/" />
-      <button onclick="extractCaption()">Extract Caption</button>
-    </div>
-    
-    <div id="result" class="hidden">
-      <img id="preview" alt="Post Preview" />
-      <p><strong>Caption:</strong></p>
-      <p id="captionText"></p>
-    </div>
-    
-    <p id="error" class="error-message hidden"></p>
-  </div>
+  <h1>Instagram Caption Extractor</h1>
+  <input type="text" id="instaUrl" placeholder="Paste Instagram post or reel URL here">
+  <button onclick="extractCaption()">Extract</button>
 
-  <script src="script.js"></script>
+  <div id="result"></div>
+
+  <script>
+    async function extractCaption() {
+      const url = document.getElementById("instaUrl").value;
+      const result = document.getElementById("result");
+
+      result.innerHTML = "⏳ Processing...";
+
+      try {
+        const res = await fetch(`https://insta-captionbackend.onrender.com/api/extract?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          result.innerHTML = `<p class="error">❌ ${data.error}</p>`;
+        } else {
+          result.innerHTML = `
+            <p><strong>Caption:</strong> ${data.caption || 'No caption found.'}</p>
+            ${data.image ? `<img id="previewImage" src="${data.image}" alt="Instagram Preview">` : ''}
+          `;
+        }
+      } catch (err) {
+        result.innerHTML = `<p class="error">⚠️ Error: ${err.message}</p>`;
+      }
+    }
+  </script>
 </body>
 </html>
