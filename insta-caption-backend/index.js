@@ -1,86 +1,41 @@
-const express = require("express");
 const puppeteer = require("puppeteer");
-const cors = require("cors");
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+(async () => {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
 
-app.use(cors());
-app.use(express.json());
+  // 🧭 Emulate mobile browser
+  await page.setUserAgent(
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) " +
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15A372 Safari/604.1"
+  );
 
-const extractInstagramData = async (url) => {
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: "new", // Use "true" for older Puppeteer versions
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+  // 📐 Viewport and language settings
+  await page.setViewport({ width: 375, height: 812 });
+  await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
 
-    const page = await browser.newPage();
-    await page.setDefaultNavigationTimeout(30000);
-    await page.goto(url, { waitUntil: "networkidle2" });
+  // 🖼 Navigate to Instagram post
+  await page.goto("https://www.instagram.com/p/POST_ID", {
+    waitUntil: "networkidle2"
+  });
 
-    const result = await page.evaluate(() => {
-      let caption = null;
-      let image = null;
+  // 🔍 Extract caption and image
+  const result = await page.evaluate(() => {
+    let caption = null;
+    let image = null;
 
-      const ldJson = document.querySelector('script[type="application/ld+json"]');
-      if (ldJson) {
-        try {
-          const metadata = JSON.parse(ldJson.innerText);
-          caption = metadata.caption || metadata.articleBody || null;
-          image = metadata.image || null;
-        } catch (e) {}
-      }
+    // Try newer selector first
+    const captionElem = document.querySelector("div[data-testid='media-caption']");
+    if (captionElem) caption = captionElem.innerText;
 
-      if (!caption) {
-        const captionElem = document.querySelector("meta[property='og:description']");
-        if (captionElem) {
-          caption = captionElem.getAttribute("content");
-        }
-      }
+    // Fallback to standard image element
+    const imgElem = document.querySelector("article img");
+    if (imgElem) image = imgElem.src;
 
-      if (!image) {
-        const imgElem = document.querySelector("meta[property='og:image']");
-        if (imgElem) {
-          image = imgElem.getAttribute("content");
-        }
-      }
+    return { caption, image };
+  });
 
-      return { caption, image };
-    });
+  console.log(result);
 
-    return result;
-  } catch (err) {
-    console.error("❌ Puppeteer error:", err.message);
-    throw new Error("Could not extract Instagram data.");
-  } finally {
-    if (browser) await browser.close();
-  }
-};
-
-app.get("/api/extract", async (req, res) => {
-  const postUrl = req.query.url;
-  const validPath = /instagram\.com\/(p|reel|tv)\/[a-zA-Z0-9_-]+/i;
-
-  if (!postUrl || !validPath.test(postUrl)) {
-    return res.status(400).json({
-      error: "Invalid Instagram URL. Must be a post, reel, or IGTV link.",
-    });
-  }
-
-  try {
-    const result = await extractInstagramData(postUrl);
-    if (!result.caption && !result.image) {
-      return res.status(500).json({ error: "Could not extract any content." });
-    }
-
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+  await browser.close();
+})();
