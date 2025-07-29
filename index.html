@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instagram Caption Extractor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Instagram Caption Extractor</h1>
+    <p class="subtitle">Paste the URL of any public Instagram post to extract the caption.</p>
+    
+    <div class="input-box">
+      <input type="text" id="instaUrl" placeholder="https://www.instagram.com/p/xyz123/" />
+      <button onclick="extractCaption()">Extract Caption</button>
+    </div>
+    
+    <div id="result" class="hidden">
+      <img id="preview" alt="Post Preview" />
+      <p><strong>Caption:</strong></p>
+      <p id="captionText"></p>
+    </div>
+    
+    <p id="error" class="error-message hidden"></p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
